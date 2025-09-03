@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MentorDashboard by ToCome.co</title>
+<title>MentorDashboard by ThinkFirst.co</title>
 <style>
   :root {
     --bg: #0b0b0c; --card: #111; --muted: #9aa0a6; --accent: #8b5cf6; --glass: rgba(255,255,255,0.03);
@@ -129,7 +129,40 @@
 
   /* === BAGIAN SIDEBAR YANG DIEDIT === */
   #sidebar { position: fixed; left: 0; top: 0; width: 240px; height: 100vh; background: var(--card); border-right: 1px solid var(--border-color); padding: 12px; display: flex; flex-direction: column; z-index: 40; transition: width 0.3s ease-in-out; }
-  .sidebar-header { margin-bottom: 16px; }
+/* === AWAL EDITAN BARU === */
+.sidebar-header {
+    display: flex;
+    align-items: center; /* Kunci untuk membuat vertikal di tengah */
+    gap: 12px; /* Jarak antara tombol dan logo */
+    margin-bottom: 16px;
+    height: 44px; /* Beri tinggi tetap agar stabil */
+}
+
+.sidebar-logo {
+    height: 32px; /* Atur tinggi logo */
+    width: auto;  /* Lebar otomatis mengikuti aspek rasio */
+    border-radius: 6px; /* Sudut melengkung */
+    object-fit: cover; /* Memastikan gambar mengisi area tanpa distorsi */
+    display: block; /* Menghilangkan spasi ekstra di bawah gambar */
+    opacity: 1;
+    transition: opacity 0.2s ease-out, max-width 0.3s ease-out; /* Transisi halus */
+    max-width: 150px;
+}
+
+/* Saat sidebar diciutkan/minimize */
+body.sidebar-collapsed .sidebar-logo {
+    opacity: 0; /* Sembunyikan logo dengan fade out */
+    max-width: 0; /* Buat lebarnya jadi 0 */
+    pointer-events: none; /* Agar tidak bisa diinteraksi saat transparan */
+}
+
+/* Pastikan tombol minimize kembali ke tengah saat diciutkan */
+body.sidebar-collapsed .nav-item { 
+    justify-content: center; 
+}
+/* === AKHIR EDITAN BARU === */
+
+body.sidebar-collapsed .nav-item { justify-content: center; } /* Ini tetap ya */
   .sidebar-menu { display: flex; flex-direction: column; gap: 4px; flex-grow: 1; overflow-y: auto; }
   .sidebar-footer { margin-top: auto; }
 
@@ -197,12 +230,13 @@
 
     <nav id="sidebar" style="display: none;">
         <div class="sidebar-header">
-            <button id="sidebar-toggle-btn" class="nav-item" onclick="toggleSidebar()">
-              <span class="nav-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-              </span>
-            </button>
-        </div>
+    <button id="sidebar-toggle-btn" class="nav-item" onclick="toggleSidebar()">
+        <span class="nav-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </span>
+    </button>
+    <img src="thinkfirst logo.jpg" alt="Logo" class="sidebar-logo">
+</div>
         <div class="sidebar-menu">
             <button id="nav-beranda" class="nav-item" onclick="showView('beranda')"><span class="nav-icon">🏠</span><span class="nav-text">Beranda</span></button>
             <button id="nav-jadwal" class="nav-item" onclick="showView('jadwal')"><span class="nav-icon">🗓️</span><span class="nav-text">Jadwal</span></button>
