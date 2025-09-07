@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>MentorDashboard by ThinkFirst.co</title>
+<title>ThinkFirst Daily Tracker</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 <style>
   :root {
     --bg: #0b0b0c; --card: #111; --muted: #9aa0a6; --accent: #8b5cf6; --glass: rgba(255,255,255,0.03);
@@ -203,6 +206,384 @@ body.sidebar-collapsed .nav-item { justify-content: center; } /* Ini tetap ya */
     header { flex-wrap: wrap; }
     .logo { width: 60px; height: 60px; font-size: 24px; }
   }
+
+  /* === CSS UNTUK FITUR JURNALING === */
+.journal-list-item {
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background .2s ease, border-color .2s ease;
+    margin-bottom: 6px;
+    background: var(--glass);
+}
+.journal-list-item:hover {
+    background: rgba(255,255,255,0.05);
+}
+.journal-list-item.active {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+.journal-list-item.active .journal-item-title,
+.journal-list-item.active .journal-item-date {
+    color: #fff;
+}
+/* PERBAIKAN UNTUK SCROLLBAR DAFTAR JURNAL (KIRI) */
+#journal-list {
+    flex-grow: 1;      /* Kunci #1: Perintahkan untuk mengisi semua sisa ruang vertikal di dalam card */
+    overflow-y: auto;  /* Kunci #2: Tampilkan scrollbar jika daftar itemnya penuh dan meluap */
+    padding-right: 4px; /* Opsi: Beri sedikit ruang agar scrollbar tidak terlalu nempel ke teks */
+    height: 350px; /* <-- INI KUNCINYA. Atur tinggi pasti di sini. *//* Otomatis aktif jika konten melebihi 350px */
+    border-bottom: 1px solid var(--border-color);
+    /* HAPUS 'flex-grow: 1' jika masih ada */
+}
+.journal-item-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 4px;
+}
+.journal-item-date {
+    font-size: 12px;
+    color: var(--muted);
+}
+
+#journal-content:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+
+/* Container untuk toolbar kustom kita */
+.toolbar-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 4px;
+}
+
+/* Styling dasar untuk semua tombol */
+.toolbar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background .2s ease;
+}
+.toolbar-btn:hover {
+    background: var(--glass);
+}
+/* Styling khusus untuk tombol utama */
+.toolbar-toggle {
+    background: var(--glass);
+    border-right: 1px solid var(--border-color);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+/* Container untuk opsi-opsi yang bisa disembunyikan */
+.toolbar-options {
+    display: flex;
+    align-items: center;
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: max-width 0.3s ease-in-out, opacity 0.2s ease-in-out;
+}
+/* State saat container terbuka */
+.toolbar-options.is-open {
+    max-width: 400px; /* Lebar maksimal saat terbuka */
+    opacity: 1;
+}
+
+/* Pemisah antar grup tombol */
+.toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+
+/* Styling untuk ikon di dalam tombol dari Quill */
+.ql-snow .ql-stroke, .ql-bubble .ql-stroke {
+    stroke: var(--text-primary);
+}
+.ql-snow .ql-fill, .ql-bubble .ql-fill {
+    fill: var(--text-primary);
+}
+.ql-bubble .ql-picker {
+    color: var(--text-primary);
+}
+
+/* === CSS UNTUK TOOLBAR BAWAH EDITOR === */
+/* === PERBAIKAN FINAL LAYOUT EDITOR & TOOLBAR BAWAH === */
+
+/* Card editor utama (tidak berubah, tetap flex column) */
+/* === CSS FINAL & PASTI UNTUK EDITOR JURNAL === */
+
+/* Card editor utama, biarkan tingginya otomatis */
+#journal-editor-container.card {
+    display: flex;
+    flex-direction: column;
+    /* HAPUS SEMUA PROPERTI 'height' DARI SINI */
+}
+
+/* 1. ZONA TEKS (Diberi Tinggi Tetap) */
+#quill-editor-area {    /* Kunci #1: Perintahkan untuk mengisi semua sisa ruang vertikal yang tersedia di dalam card. */
+    min-height: 435px;    /* Kunci #2: Beri batasan tinggi MINIMAL. Area teks tidak akan pernah lebih pendek dari ini. */
+    max-height: 435px;
+    overflow-y: auto;     /* Tetap ada untuk memunculkan scrollbar jika konten di dalamnya lebih panjang dari areanya. */
+    border-bottom: 1px solid var(--border-color);
+}
+
+
+/* Konten di dalam Quill (.ql-editor) */
+.ql-editor {
+    font-size: 15px;
+    line-height: 1.7;
+    padding: 18px;
+    min-height: 100%; /* Pastikan editor mengisi area scroll */
+}
+/* === STYLING UNTUK SCROLLBAR MINIMALIS === */
+
+/* Kita targetkan spesifik ke area scroll editor jurnal */
+#quill-editor-area::-webkit-scrollbar {
+  width: 6px; /* Lebar scrollbar, bisa kamu atur (misal: 4px, 8px) */
+}
+
+/* Bagian 'rel' atau track dari scrollbar (latar belakangnya) */
+#quill-editor-area::-webkit-scrollbar-track {
+  background: transparent; /* Buat track-nya transparan, menyatu dengan card */
+}
+
+/* Bagian 'gagang' atau thumb yang bisa digeser */
+#quill-editor-area::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.15); /* Warna gagang scrollbar */
+  border-radius: 6px; /* Buat sudutnya membulat */
+}
+
+/* Saat gagang scrollbar di-hover dengan mouse, buat warnanya sedikit lebih terang */
+#quill-editor-area::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+/* Styling scrollbar untuk Firefox */
+#quill-editor-area {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+/* Menghilangkan border default dari Quill */
+.ql-container.ql-snow {
+    border: none !important;
+}
+
+/* 2. ZONA ANTI TEKS (Kontainer Toolbar) - Tidak berubah */
+#toolbar-container {
+    padding: 8px 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+/* Toolbar itu sendiri - Tidak berubah */
+#bottom-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(30, 30, 30, 0.7);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 6px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+/* Styling untuk tombol-tombol di dalam toolbar (tidak berubah) */
+#bottom-toolbar button {
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+#bottom-toolbar button:hover {
+    background: var(--glass);
+}
+#bottom-toolbar button.ql-active {
+    background: var(--accent);
+}
+#bottom-toolbar .toolbar-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
+    margin: 0 4px;
+}
+#bottom-toolbar .ql-stroke { stroke: var(--text-primary); }
+#bottom-toolbar .ql-fill { fill: var(--text-primary); }
+#bottom-toolbar.ql-active .ql-stroke { stroke: #fff; }
+/* === CSS UNTUK GRUP JURNAL BULANAN === */
+.journal-month-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    margin-top: 10px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.2s ease;
+}
+.journal-month-header:hover {
+    background: rgba(255,255,255,0.1);
+}
+.month-toggle-icon {
+    transition: transform 0.3s ease;
+    transform: rotate(-90deg); /* <-- State default (ikon hadap samping ►) */
+}
+.journal-month-header.is-open .month-toggle-icon {
+    transform: rotate(0deg); /* <-- State saat terbuka (ikon hadap bawah ▼) */
+}
+
+.journal-entries-container {
+    padding-left: 10px;
+    border-left: 2px solid var(--border-color);
+    margin-left: 12px;
+    margin-top: 8px;
+    /* Animasi buka-tutup */
+    max-height: 0; /* <-- State default (tertutup/minimize) */
+    overflow: hidden;
+    transition: max-height 0.4s ease-in-out;
+}
+.journal-entries-container.is-open {
+    max-height: 1000px; /* <-- State saat terbuka/expand */
+}
+/* === CSS UNTUK JURNALING V2 (Template & Mood) === */
+.template-options-container {
+    display: none;
+    position: absolute;
+    right: 90px;
+    top: 100%;
+    margin-top: 4px;
+    background: var(--card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 6px;
+    z-index: 20;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    width: 160px;
+}
+.template-options-container.show {
+    display: block;
+}
+.template-options-container button {
+    width: 100%;
+    background: transparent;
+    border: none;
+    padding: 8px 10px;
+    border-radius: 6px;
+    text-align: left;
+    cursor: pointer;
+}
+.template-options-container button:hover {
+    background: var(--glass);
+}
+
+/* GANTI BAGIAN CSS MOOD TRACKER DENGAN INI */
+#mood-tracker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.mood-btn {
+    background: transparent;
+    border: 2px solid transparent;
+    border-radius: 8px; /* Ubah ke persegi agar label pas */
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column; /* Susun vertikal */
+    align-items: center;
+    justify-content: center;
+    width: 65px; /* Perlebar sedikit */
+    height: 60px; /* Tinggikan sedikit */
+    padding: 4px;
+}
+.mood-btn:hover {
+    transform: translateY(-2px);
+    background: var(--glass);
+}
+.mood-btn.active {
+    background: var(--accent);
+    transform: translateY(0);
+    border-color: rgba(255,255,255,0.5);
+}
+.mood-emoji {
+    font-size: 24px; /* Atur ukuran emoji */
+    margin-bottom: 2px;
+}
+.mood-label {
+    font-size: 11px; /* Atur ukuran label */
+    color: var(--muted);
+    transition: color 0.2s ease;
+}
+.mood-btn.active .mood-label {
+    color: var(--text-primary); /* Buat label lebih terang saat aktif */
+    font-weight: 600;
+}
+
+/* Layout 2 kolom untuk Jurnal di Desktop */
+#jurnal-container {
+    grid-template-columns: 320px 1fr;
+    gap: 18px;
+    align-items: stretch;
+    min-height: calc(100vh - 40px); /* <-- UBAH JADI INI */
+}
+
+/* Di dalam @media query yang sudah ada, tambahkan ini */
+@media (max-width: 852px) {
+    /* ... aturan mobile lain yang sudah ada ... */
+
+    /* Layout 1 kolom untuk Jurnal di Mobile */
+    #jurnal-container {
+        grid-template-columns: 1fr; /* Jadi 1 kolom */
+        height: auto; /* Biarkan tingginya otomatis */
+        gap: 12px; /* Perkecil jarak */
+    }
+}
+
+/* Sembunyikan tombol 'Kembali' di desktop */
+.mobile-only {
+    display: none;
+}
+
+/* Class untuk menyembunyikan elemen di mobile */
+.jurnal-mobile-hidden {
+    display: none !important;
+}
+
+/* Di dalam @media (max-width: 992px), tambahkan ini */
+@media (max-width: 992px) {
+    /* ... aturan mobile lain ... */
+    
+    /* Tampilkan tombol 'Kembali' di mobile */
+    .mobile-only {
+        display: inline-block; /* atau 'block' */
+    }
+}
+/* === AKHIR CSS JURNALING === */
+
 </style>
 </head>
 <body class="minimal-scrollbar">
@@ -378,14 +759,73 @@ body.sidebar-collapsed .nav-item { justify-content: center; } /* Ini tetap ya */
             </div>
         </div>
 
-        <div id="jurnaling-view" class="view-container" style="display: none;">
-            <div class="container" style="grid-template-columns: 1fr;">
-                <div class="card">
-                    <h1 style="font-size: 24px;">Jurnal Harian</h1>
-                    <p class="small">Fitur ini sedang dalam pengembangan. Nanti di sini akan ada editor teks untuk menulis dan menyimpan jurnal harian Anda.</p>
+<div id="jurnaling-view" class="view-container" style="display: none;">
+    
+    <div id="jurnal-container" class="container">
+        
+        <div id="jurnal-list-card" class="card" style="padding: 12px; display: flex; flex-direction: column;">
+            <div style="padding: 6px; display:flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h2 style="margin:0; font-size: 18px;">Entri Jurnal</h2>
+                <div style="display:flex; gap: 8px; position: relative;">
+                    <button class="btn" onclick="toggleTemplateSelector()" style="font-size: 13px; padding: 6px 10px;">Pilih Template</button>
+                    <div id="template-options" class="template-options-container">
+                        <button onclick="applyJournalTemplate('daily')">Refleksi Harian</button>
+                        <button onclick="applyJournalTemplate('weekly')">Tinjauan Mingguan</button>
+                    </div>
+                    <button class="primary" onclick="createNewJournalEntry()" style="font-size: 13px; padding: 6px 10px;">+ Baru</button>
                 </div>
             </div>
+            <div id="journal-list" class="minimal-scrollbar">
+                </div>
         </div>
+
+        <div id="journal-editor-container" class="card" style="display: none; padding: 0;">
+            <div style="padding: 18px 18px 12px 18px; border-bottom: 1px solid var(--border-color);">
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <input type="text" id="journal-title" placeholder="Judul Jurnal..." style="font-size: 18px; font-weight: bold; border: none; background: transparent; padding: 0;"/>
+                    <div style="display:flex; gap: 8px;">
+                         <button id="jurnal-back-btn" class="btn mobile-only" onclick="showJournalListMobile()">‹ Kembali</button>
+                         <button class="btn" onclick="deleteJournalEntry()">Hapus</button>
+                         <button class="primary" onclick="saveJournalEntry(true)">Simpan</button>
+                    </div>
+                </div>
+                <div id="journal-date" class="small muted"></div>
+                <div id="mood-tracker" style="margin-top: 12px; margin-bottom: 8px;">
+                    <span class="small muted" style="margin-right: 12px;">Bagaimana perasaanmu?</span>
+                    <button class="mood-btn" onclick="setMood('😊', this)"><span class="mood-emoji">😊</span><span class="mood-label">Senang</span></button>
+                    <button class="mood-btn" onclick="setMood('😐', this)"><span class="mood-emoji">😐</span><span class="mood-label">Biasa</span></button>
+                    <button class="mood-btn" onclick="setMood('😔', this)"><span class="mood-emoji">😔</span><span class="mood-label">Lelah</span></button>
+                    <button class="mood-btn" onclick="setMood('🚀', this)"><span class="mood-emoji">🚀</span><span class="mood-label">Produktif</span></button>
+                    <button class="mood-btn" onclick="setMood('🤔', this)"><span class="mood-emoji">🤔</span><span class="mood-label">Reflektif</span></button>
+                </div>
+            </div>
+
+            <div id="quill-editor-area" class="minimal-scrollbar">
+                <div id="quill-editor"></div>
+            </div>
+            
+            <div id="toolbar-container">
+                <div id="bottom-toolbar">
+                    <button class="ql-bold"></button>
+                    <button class="ql-italic"></button>
+                    <button class="ql-underline"></button>
+                    <span class="toolbar-divider"></span>
+                    <button class="ql-header" value="1"></button>
+                    <button class="ql-header" value="2"></button>
+                    <span class="toolbar-divider"></span>
+                    <button class="ql-list" value="bullet"></button>
+                    <button class="ql-list" value="ordered"></button>
+                </div>
+            </div>
+            
+            <input type="hidden" id="journal-entry-index">
+        </div>
+
+        <div class="card" id="journal-placeholder" style="display: flex; align-items: center; justify-content: center;">
+            <div class="small muted" style="text-align: center;">Pilih entri untuk dilihat atau<br>buat entri baru.</div>
+        </div>
+    </div>
+</div>
 
         <div id="belajar-view" class="view-container" style="display: none;">
             <div class="container" style="grid-template-columns: 1fr;">
@@ -575,6 +1015,10 @@ body.sidebar-collapsed .nav-item { justify-content: center; } /* Ini tetap ya */
       </div>
     </div>
 
+    
+    </div>
+</div>
+</div>
 <script>
 // ===================================================================================
 // ============================= FUNGSI-FUNGSI =======================================
@@ -595,6 +1039,249 @@ let editingTodoIndex = null;
 let selectedDeadline = null;
 let deadlineCalendarView = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
+const JOURNAL_TEMPLATES = {
+    daily: {
+        ops: [
+            { insert: 'Refleksi Harian', attributes: { header: 2 } },
+            { insert: '\n\n' },
+            { insert: 'Apa 3 hal yang aku syukuri hari ini?', attributes: { bold: true } },
+            { insert: '\n1. \n2. \n3. \n\n' },
+            { insert: 'Apa tantangan terbesarku dan bagaimana aku mengatasinya?', attributes: { bold: true } },
+            { insert: '\n\n' },
+            { insert: 'Satu hal baru apa yang aku pelajari hari ini?', attributes: { bold: true } },
+            { insert: '\n' }
+        ]
+    },
+    weekly: {
+        ops: [
+            { insert: 'Tinjauan Mingguan', attributes: { header: 2 } },
+            { insert: '\n\n' },
+            { insert: 'Apa kemenangan terbesarku minggu ini?', attributes: { bold: true } },
+            { insert: '\n\n' },
+            { insert: 'Pelajaran apa yang aku dapatkan?', attributes: { bold: true } },
+            { insert: '\n\n' },
+            { insert: 'Apa yang bisa aku perbaiki untuk minggu depan?', attributes: { bold: true } },
+            { insert: '\n' }
+        ]
+    }
+};
+// ===================================================================================
+// ============================= FUNGSI-FUNGSI JURNALING V1 ==========================
+// ===================================================================================
+
+let currentJournalIndex = null;
+let autoSaveTimer;
+let quill; // <-- TAMBAHKAN INI
+
+function renderJournalView() {
+    const journalList = document.getElementById('journal-list');
+    journalList.innerHTML = '';
+
+    if (!DATA.journalEntries || DATA.journalEntries.length === 0) {
+        journalList.innerHTML = `<div class="small muted" style="text-align:center; padding: 20px 0;">Belum ada jurnal.</div>`;
+        document.getElementById('journal-editor-container').style.display = 'none';
+        document.getElementById('journal-placeholder').style.display = 'flex';
+        return;
+    }
+
+    // 1. Kelompokkan entri berdasarkan bulan (format: YYYY-MM)
+    const groupedEntries = DATA.journalEntries.reduce((acc, entry) => {
+        const date = new Date(entry.date);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!acc[monthKey]) {
+            acc[monthKey] = [];
+        }
+        acc[monthKey].push(entry);
+        return acc;
+    }, {});
+
+    // 2. Urutkan grup bulan dari yang terbaru (misal: 2025-09, 2025-08)
+    const sortedMonthKeys = Object.keys(groupedEntries).sort().reverse();
+
+    // 3. Loop untuk setiap grup bulan dan buat headernya
+    sortedMonthKeys.forEach(monthKey => {
+        const [year, month] = monthKey.split('-');
+        const dateLocale = DATA.language === 'id' ? 'id-ID' : 'en-US';
+        const monthName = new Date(year, month - 1).toLocaleString(dateLocale, { month: 'long', year: 'numeric' });
+        
+        // Buat header bulan yang bisa diklik
+        const monthHeader = document.createElement('div');
+        monthHeader.className = 'journal-month-header';
+        // Set bulan pertama (terbaru) agar langsung terbuka
+        if (monthKey === sortedMonthKeys[0]) {
+             monthHeader.classList.add('is-open');
+        }
+        monthHeader.onclick = () => toggleMonthSection(monthHeader);
+        monthHeader.innerHTML = `
+            <span>${monthName}</span>
+            <span class="month-toggle-icon">▼</span>
+        `;
+        journalList.appendChild(monthHeader);
+
+        // Buat kontainer untuk entri-entri di bulan tersebut
+        const entriesContainer = document.createElement('div');
+        entriesContainer.className = 'journal-entries-container';
+        if (monthKey === sortedMonthKeys[0]) {
+             entriesContainer.classList.add('is-open');
+        }
+        journalList.appendChild(entriesContainer);
+
+        // 4. Urutkan entri di dalam bulan tersebut dari yang terbaru
+        const entriesInMonth = groupedEntries[monthKey].sort((a, b) => new Date(b.date) - new Date(a.date));
+        
+        // 5. Loop untuk setiap entri dan masukkan ke dalam kontainer bulan
+        entriesInMonth.forEach(entry => {
+            const originalIndex = DATA.journalEntries.indexOf(entry);
+            const div = document.createElement('div');
+            div.className = 'journal-list-item';
+            div.onclick = () => displayJournalEntry(originalIndex);
+            
+            const date = new Date(entry.date);
+            const formattedDate = date.toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
+
+            div.innerHTML = `
+                <div class="journal-item-title">${entry.title || 'Tanpa Judul'}</div>
+                <div class="journal-item-date">${formattedDate}</div>
+            `;
+            entriesContainer.appendChild(div);
+        });
+    });
+
+    // Logika untuk menampilkan editor (tidak banyak berubah)
+    if (currentJournalIndex !== null) {
+        // Highlight item yang aktif
+        document.querySelectorAll('.journal-list-item').forEach(item => {
+            const itemTitle = item.querySelector('.journal-item-title').textContent;
+            const itemDate = new Date(item.querySelector('.journal-item-date').textContent);
+            const activeEntry = DATA.journalEntries[currentJournalIndex];
+            const activeDate = new Date(activeEntry.date);
+
+            const isSameTitle = itemTitle === (activeEntry.title || 'Tanpa Judul');
+            const isSameDay = itemDate.toDateString() === activeDate.toDateString();
+
+            if (isSameTitle && isSameDay) { // Cek judul dan tanggal
+                item.classList.add('active');
+            } else {
+                item.classList.remove('active');
+            }
+        });
+        displayJournalEntry(currentJournalIndex);
+    } else {
+        document.getElementById('journal-editor-container').style.display = 'none';
+        document.getElementById('journal-placeholder').style.display = 'flex';
+    }
+}
+
+function displayJournalEntry(index) {
+    // === TAMBAHAN UNTUK MOBILE ===
+    if (window.innerWidth <= 992) {
+        document.getElementById('jurnal-list-card').classList.add('jurnal-mobile-hidden');
+    }
+    currentJournalIndex = index;
+    const entry = DATA.journalEntries[index];
+    if (!entry) return;
+
+    document.getElementById('journal-placeholder').style.display = 'none';
+    document.getElementById('journal-editor-container').style.display = 'block';
+    
+    initJournalEditor();
+
+    document.getElementById('journal-title').value = entry.title;
+    quill.setContents(entry.content); 
+    document.getElementById('journal-entry-index').value = index;
+
+    const date = new Date(entry.date);
+    const dateLocale = DATA.language === 'id' ? 'id-ID' : 'en-US';
+    document.getElementById('journal-date').textContent = `Dibuat pada: ${date.toLocaleString(dateLocale, { dateStyle: 'full', timeStyle: 'short' })}`;
+
+    // --- BAGIAN BARU UNTUK UPDATE MOOD ---
+    document.querySelectorAll('.mood-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === entry.mood);
+    });
+    // ------------------------------------
+
+    // ... sisa kodenya sama untuk highlight item ...
+    // Logika highlight di renderJournalView sudah cukup, jadi bagian ini bisa dihapus dari sini untuk menghindari duplikasi
+}
+
+function createNewJournalEntry() {
+    if (!DATA.journalEntries) DATA.journalEntries = [];
+    
+    // Quill menyimpan konten dalam format khusus yang disebut Delta
+    // `{ ops: [{ insert: 'Mulai menulis di sini...\n' }] }` adalah representasi dari teks itu.
+    const newEntry = {
+    title: "Entri Baru",
+    content: { ops: [{ insert: 'Mulai menulis di sini...\n' }] }, 
+    date: new Date().toISOString(), // <-- KOMA YANG HILANG ADA DI SINI
+    mood: null
+};
+    
+    DATA.journalEntries.push(newEntry);
+    const newIndex = DATA.journalEntries.length - 1;
+    currentJournalIndex = newIndex;
+    
+    saveData();
+    renderJournalView();
+    displayJournalEntry(newIndex);
+}
+
+function saveJournalEntry(showNotif = false) { // Tambahkan parameter showNotif
+    if (!quill) return;
+
+    const index = parseInt(document.getElementById('journal-entry-index').value);
+    if (isNaN(index) || !DATA.journalEntries[index]) return;
+
+    const oldTitle = DATA.journalEntries[index].title;
+    const newTitle = document.getElementById('journal-title').value;
+
+    DATA.journalEntries[index].title = newTitle;
+    DATA.journalEntries[index].content = quill.getContents();
+
+    if (!DATA.journalEntries[index].xpAwarded) {
+        const today = dateStr(todayDateObj());
+        DATA.xp += 5;
+        DATA.xpHistory[today] = (DATA.xpHistory[today] || 0) + 5;
+        DATA.journalEntries[index].xpAwarded = true;
+        addLogEntry("📓 Menulis Jurnal (+5 XP)");
+        render(); 
+    }
+    
+    saveData();
+    
+    if (oldTitle !== newTitle) {
+        renderJournalView();
+    }
+    
+    // Hanya tampilkan notifikasi jika diminta (saat tombol 'Simpan' diklik)
+    if (showNotif) {
+        showNotification("Jurnal berhasil disimpan!");
+    }
+}
+function deleteJournalEntry() {
+    const index = parseInt(document.getElementById('journal-entry-index').value);
+    if (isNaN(index) || !DATA.journalEntries[index]) return;
+
+    if (confirm("Apakah Anda yakin ingin menghapus entri jurnal ini?")) {
+        DATA.journalEntries.splice(index, 1);
+        currentJournalIndex = null;
+        saveData();
+        renderJournalView();
+        showNotification("Jurnal telah dihapus.");
+    }
+}
+
+function formatDoc(command) {
+    document.execCommand(command, false, null);
+    document.getElementById('journal-content').focus();
+}
+
+function handleEditorInput() {
+    // Fungsi untuk auto-save
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+        saveJournalEntry();
+    }, 2000); // Auto-save setelah 2 detik tidak mengetik
+}
 function initAuth(){const currentUser=localStorage.getItem(CURRENT_USER_KEY);if(currentUser){document.getElementById('auth-container').style.display='none';document.getElementById('sidebar').style.display='flex';document.getElementById('main-content').style.display='block';loadAndRenderDashboard()}else{document.getElementById('auth-container').style.display='flex';document.getElementById('sidebar').style.display='none';document.getElementById('main-content').style.display='none'}}
 function switchAuthTab(tabName){document.querySelectorAll('.auth-tab').forEach(tab=>tab.classList.remove('active'));document.querySelectorAll('.auth-form').forEach(form=>form.classList.remove('active'));document.getElementById(`tab-${tabName}`).classList.add('active');document.getElementById(`${tabName}-form`).classList.add('active');hideAuthMessage()}
 function showAuthMessage(message,isError=true){const msgEl=document.getElementById('auth-message');msgEl.textContent=message;msgEl.style.display='block'}
@@ -608,7 +1295,7 @@ const users=JSON.parse(localStorage.getItem(USERS_KEY)||'{}');if(!users[username
 localStorage.setItem(CURRENT_USER_KEY,username);initAuth()}
 function handleLogout(){localStorage.removeItem(CURRENT_USER_KEY);location.reload()}
 function getStorageKey(){const currentUser=localStorage.getItem(CURRENT_USER_KEY);return`mentor_dashboard_data_${currentUser}`}
-function getInitialDataStructure(){const init={xp:0,level:1,dayOffset:0,mainQuestStreak:0,lastMainQuestDate:null,habitsStreak:0,lastHabitsDate:null,todoStreak:0,lastTodoDate:null,totalTodosCompleted:0,totalAcademicQuestsCompleted:0,unlockedBadges:[],todoLog:[],academicQuestLog:[],activityLog:[],xpHistory:{},dailyHabits:{},lastVisitDate:null,lastWeeklyReportDate:null,lastVisitMonthStr:null,archive:[],language:'id',theme:'viola',userProfile:{logo:'MD',title:'MentorDashboard',description:'Dasbor gamifikasi...',logoImage:null,headerImage:null},sidebarCollapsed: false,focusMap:{'Senin':{title:'MTK',desc:'Selesaikan 20 soal'},'Selasa':{title:'Dicoding',desc:'Selesaikan 1 modul'},'Rabu':{title:'TOEFL',desc:'1 section + 15 soal'},'Kamis':{title:'MTK',desc:'Selesaikan 20 soal'},'Jumat':{title:'Dicoding',desc:'Selesaikan 1 modul'},'Sabtu':{title:'TOEFL',desc:'1 section + 15 soal'},'Minggu':{title:'Review',desc:'Ringkasan mingguan'}},habitsConfig: [
+function getInitialDataStructure(){const init={xp:0,level:1,journalEntries: [],dayOffset:0,mainQuestStreak:0,lastMainQuestDate:null,habitsStreak:0,lastHabitsDate:null,todoStreak:0,lastTodoDate:null,totalTodosCompleted:0,totalAcademicQuestsCompleted:0,unlockedBadges:[],todoLog:[],academicQuestLog:[],activityLog:[],xpHistory:{},dailyHabits:{},lastVisitDate:null,lastWeeklyReportDate:null,lastVisitMonthStr:null,archive:[],language:'id',theme:'viola',userProfile:{logo:'MD',title:'MentorDashboard',description:'Dasbor gamifikasi...',logoImage:null,headerImage:null},sidebarCollapsed: false,focusMap:{'Senin':{title:'MTK',desc:'Selesaikan 20 soal'},'Selasa':{title:'Dicoding',desc:'Selesaikan 1 modul'},'Rabu':{title:'TOEFL',desc:'1 section + 15 soal'},'Kamis':{title:'MTK',desc:'Selesaikan 20 soal'},'Jumat':{title:'Dicoding',desc:'Selesaikan 1 modul'},'Sabtu':{title:'TOEFL',desc:'1 section + 15 soal'},'Minggu':{title:'Review',desc:'Ringkasan mingguan'}},habitsConfig: [
     {id: 'sholat', label: 'Sholat 5 Waktu', desc: 'Menjaga rutinitas ibadah & disiplin waktu.', xp: 5},
     {id: 'olahraga', label: 'Olahraga 20 Menit', desc: 'Aktivitas fisik untuk kesehatan & energi.', xp: 5},
     {id: 'meditasi', label: 'Meditasi 10 Menit', desc: 'Latihan mindfulness untuk mengurangi stres.', xp: 5},
@@ -637,7 +1324,30 @@ function showEditTab(tabName){document.querySelectorAll('.edit-pane').forEach(pa
 function saveEditModeChanges(){DATA.userProfile.logo=document.getElementById('edit-profile-logo').value;DATA.userProfile.title=document.getElementById('edit-profile-title').value;DATA.userProfile.description=document.getElementById('edit-profile-desc').value;const days=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];days.forEach(day=>{DATA.focusMap[day]={title:document.getElementById(`edit-focus-title-${day.toLowerCase()}`).value,desc:document.getElementById(`edit-focus-desc-${day.toLowerCase()}`).value}});DATA.habitsConfig.forEach((habit,index)=>{habit.label=document.getElementById(`edit-habit-label-${index}`).value;habit.desc=document.getElementById(`edit-habit-desc-${index}`).value});saveData();render();closeEditModeModal();showNotification('Perubahan berhasil disimpan!')}
 function addDailyQuest(){const newId='habit_'+Date.now();DATA.habitsConfig.push({id:newId,label:'Quest Baru',desc:'Deskripsi quest baru.',xp:5});DATA.habits[newId]={done:false};renderDailyQuestEditor()}
 function deleteDailyQuest(index){if(confirm("Yakin ingin menghapus quest ini?")){const questToDelete=DATA.habitsConfig[index];delete DATA.habits[questToDelete.id];DATA.habitsConfig.splice(index,1);renderDailyQuestEditor()}}
-function showView(viewName){document.querySelectorAll('.view-container').forEach(view=>view.style.display='none');document.getElementById(viewName+'-view').style.display='block';document.querySelectorAll('.nav-item').forEach(btn=>btn.classList.remove('active'));document.getElementById('nav-'+viewName).classList.add('active');if(viewName==='arsip'){renderArchive()}}
+function showView(viewName) {
+    // 1. Sembunyikan semua halaman utama
+    document.querySelectorAll('.view-container').forEach(view => view.style.display = 'none');
+    // 2. Tampilkan halaman yang diklik
+    document.getElementById(viewName + '-view').style.display = 'block';
+    // 3. Hapus highlight dari semua tombol sidebar
+    document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+    // 4. Beri highlight pada tombol yang diklik
+    document.getElementById('nav-' + viewName).classList.add('active');
+
+    // --- Bagian Logika Tambahan ---
+    // Cek apakah yang diklik adalah 'arsip', jika iya, jalankan renderArchive()
+    if (viewName === 'arsip') {
+        renderArchive();
+    }
+    // Cek apakah yang diklik adalah 'jurnaling', jika iya, jalankan renderJournalView()
+    if (viewName === 'jurnaling') {
+        renderJournalView();
+        if (window.innerWidth <= 992) {
+            // Saat pertama kali buka di HP, selalu tampilkan daftar dulu
+            showJournalListMobile();
+            }
+    }
+} // <-- Tanda kurung kurawal penutup ini yang penting
 function todayDateObj(){const d=new Date;d.setDate(d.getDate()+(DATA.dayOffset||0));return d}
 function dateStr(d){return d.toISOString().split('T')[0]}
 function computeLevel(xp){return Math.floor(xp/100)+1}
@@ -809,6 +1519,69 @@ async function toggleAudio() {
         iconOn.style.display = 'none';
         iconOff.style.display = 'inline-block';
     }
+}
+function initJournalEditor() {
+    if (quill) return; 
+
+    // Inisialisasi Quill
+    quill = new Quill('#quill-editor', {
+        // Kembali ke tema 'snow' tapi tanpa toolbar default
+        theme: 'snow', 
+        modules: {
+            // Arahkan ke toolbar bawah kita
+            toolbar: '#bottom-toolbar'
+        },
+        placeholder: 'Tuliskan sesuatu yang luar biasa...'
+    });
+
+    // Setup auto-save
+    quill.on('text-change', () => {
+        clearTimeout(autoSaveTimer);
+        autoSaveTimer = setTimeout(saveJournalEntry, 2500); // Auto-save tanpa notif
+    });
+}
+function toggleMonthSection(headerElement) {
+    const entriesContainer = headerElement.nextElementSibling;
+    headerElement.classList.toggle('is-open');
+    entriesContainer.classList.toggle('is-open');
+}
+// Untuk membuka/menutup pilihan template
+function toggleTemplateSelector() {
+    const options = document.getElementById('template-options');
+    options.classList.toggle('show');
+}
+
+// Untuk menerapkan template ke editor dan membuat entri baru
+function applyJournalTemplate(templateKey) {
+    createNewJournalEntry(); // Buat entri baru dulu
+    setTimeout(() => { // Beri jeda sedikit agar entri baru siap
+        if (quill && JOURNAL_TEMPLATES[templateKey]) {
+            quill.setContents(JOURNAL_TEMPLATES[templateKey]); // Isi dengan template
+            saveJournalEntry(); // Langsung simpan
+        }
+    }, 100);
+    toggleTemplateSelector(); // Tutup pilihan template
+}
+
+// Untuk memilih mood
+function setMood(moodEmoji, buttonElement) {
+    if (currentJournalIndex === null) return;
+
+    // 1. Update data
+    DATA.journalEntries[currentJournalIndex].mood = moodEmoji;
+    
+    // 2. Update tampilan UI
+    document.querySelectorAll('.mood-btn').forEach(btn => btn.classList.remove('active'));
+    buttonElement.classList.add('active');
+    
+    // 3. Simpan perubahan
+    saveData();
+    showNotification("Mood tersimpan!");
+}
+function showJournalListMobile() {
+    document.getElementById('jurnal-list-card').classList.remove('jurnal-mobile-hidden');
+    document.getElementById('journal-editor-container').style.display = 'none';
+    document.getElementById('journal-placeholder').style.display = 'none';
 }
 </script>
 </body>
